@@ -33,6 +33,15 @@ const generateId = () => {
     return maxId + 1
 }
 
+const alreadyPresent = (name, array) => {
+    for (let i = 0; i < array.length; i++) {
+        if (array[i].name === name) {
+          return true; 
+        }
+      }
+      return false;
+}
+
 
 app.get('/api/persons', (request, response) => {
   response.json(persons)
@@ -92,9 +101,16 @@ app.delete('/api/persons/:id', (request, response) => {
 app.post('/api/persons', (request, response) => {
     const body = request.body
 
-    if (!body || !body.name) {
+
+    if (!body || !body.name || !body.number) {
         return response.status(400).json({ 
-            error: 'name missing' 
+            error: 'name/number missing' 
+        })
+    }
+
+    if (alreadyPresent(body.name, persons)){
+        return response.status(400).json({
+            error: `${body.name} already present`
         })
     }
     const person = {
