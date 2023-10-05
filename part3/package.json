@@ -10,13 +10,14 @@
     "build-ui": "rm -rf dist && cd ./../../fullstackopen/part2/phonebook/ && npm run build && cp -r dist ./../../../fullStackOpenBackend/part3/",
     "deploy": "fly deploy",
     "deploy:full": "npm run build:ui && npm run deploy",
-    "logs:prod":"fly logs"
+    "logs:prod": "fly logs"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.18.2",
+    "mongoose": "^7.5.3",
     "morgan": "^1.10.0"
   },
   "devDependencies": {
