@@ -19,39 +19,39 @@ app.use(morgan(':method :url :status :res[content-length] - :response-time ms :r
 const Person = require('./models/persons')
 
 
-
-
 app.get('/info', (request, response) => {
-    const length = Person.count({}, function(err, count){
-        return count;
+    // const length = Person.count({}, function(err, count){
+    //     return count;
+    // })
+    Person.count({}).then(length => {
+        const now = new Date();
+
+        // Format date using Intl.DateTimeFormat
+        const formatter = new Intl.DateTimeFormat('en-US', {
+          weekday: 'short', // Abbreviated day name (Sun, Mon)
+          month: 'short',   // Abbreviated month name
+          day: 'numeric',   // Day of the month
+          year: 'numeric',  // Full year
+          hour: 'numeric',  // Hours (12-hour format)
+          minute: 'numeric',// Minutes
+          second: 'numeric',// Seconds
+          timeZoneName: 'short', // Timezone abbreviation (CEST, GMT, etc.)
+        });
+      
+        const formattedDate = formatter.format(now);
+      
+        const html = `<!DOCTYPE html>
+        <html>
+            <head><title>Phonebook</title></head>
+            <body>
+                <p>Phonebook has info for ${length} people</p>
+                <p>${formattedDate}</p>
+            </body>
+        </html>`
+        ;
+        response.send(html);
     })
 
-    const now = new Date();
-
-    // Format date using Intl.DateTimeFormat
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      weekday: 'short', // Abbreviated day name (Sun, Mon)
-      month: 'short',   // Abbreviated month name
-      day: 'numeric',   // Day of the month
-      year: 'numeric',  // Full year
-      hour: 'numeric',  // Hours (12-hour format)
-      minute: 'numeric',// Minutes
-      second: 'numeric',// Seconds
-      timeZoneName: 'short', // Timezone abbreviation (CEST, GMT, etc.)
-    });
-  
-    const formattedDate = formatter.format(now);
-  
-    const html = `<!DOCTYPE html>
-    <html>
-        <head><title>Phonebook</title></head>
-        <body>
-            <p>Phonebook has info for ${length} people</p>
-            <p>${formattedDate}</p>
-        </body>
-    </html>`
-    ;
-    response.send(html);
 })
 
 
@@ -91,7 +91,7 @@ app.put('/api/persons/:id', (request, response, next) => {
     }
     Person.findByIdAndUpdate(request.params.id, person, {new: true})
     .then(updatedPerson => {
-        response.json(updatedNote)
+        response.json(updatedPerson)
     })
     .catch(error => next(error))
 })
@@ -109,7 +109,6 @@ app.post('/api/persons', (request, response) => {
     const person = new Person({
         name: body.name,
         number: body.number
-        // id: generateId(),
     })
 
     person.save().then(savedPerson => {
