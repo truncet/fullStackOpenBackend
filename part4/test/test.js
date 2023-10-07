@@ -90,12 +90,12 @@ describe('total likes', () => {
 
 describe(' most liked', () => {
     test('when list is empty', () => {
-        const result = listHelper.mostLikes(emptyBlog)
+        const result = listHelper.favoriteBlog(emptyBlog)
         expect(result).toEqual({});
     })
 
     test('when list has only one item', () => {
-        const result = listHelper.mostLikes(listWithOneBlog)
+        const result = listHelper.favoriteBlog(listWithOneBlog)
         expect(result).toEqual(
             {
                 _id: '5a422aa71b54a676234d17f8',
@@ -109,7 +109,7 @@ describe(' most liked', () => {
     })
 
     test('whel list is bigger', () => {
-        const result = listHelper.mostLikes(blogs);
+        const result = listHelper.favoriteBlog(blogs);
         expect(result).toEqual(
             {
                 _id: "5a422b3a1b54a676234d17f9",
@@ -152,5 +152,36 @@ describe('most Blogs', () => {
             }
         )
     })
+})
+
+describe('most Likes', () => {
+    test('when list is empty', () => {
+        const result = listHelper.mostLikes(emptyBlog)
+        expect(result).toEqual({
+            author: undefined,
+            likes: 0
+        })
+    })
+
+    test('when list has only one item', () => {
+        const result = listHelper.mostLikes(listWithOneBlog)
+        expect(result).toEqual(
+            {
+                author: 'Edsger W. Dijkstra', 
+                likes: 5 
+            }
+        )
+    })
+
+    test('when list is bigger', () => {
+        const result = listHelper.mostLikes(blogs)
+        expect(result).toEqual(
+            {
+                author: 'Edsger W. Dijkstra',
+                likes: 17
+            }
+        )
+    })
+    
 })
 
