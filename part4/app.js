@@ -6,6 +6,7 @@ const cors = require('cors')
 
 const blogsRouter = require('./controllers/blog')
 const usersRouter = require('./controllers/user')
+const loginRouter = require('./controllers/login')
 
 const middleware = require('./utils/middleware')
 const logger = require('./utils/logger')
@@ -23,11 +24,7 @@ mongoose.connect(config.MONGODB_URI)
   })
   .catch((error) => {
     logger.error('error connecting to MongoDB:', error.message)
-  })    
-
-
-
-
+})    
 
 app.use(cors())
 app.use(express.static('build'))
@@ -36,6 +33,7 @@ app.use(middleware.requestLogger)
 
 app.use('/api/blogs', blogsRouter)
 app.use('/api/users', usersRouter)
+app.use('/api/login', loginRouter)
 
 
 app.use(middleware.unknownEndpoint)
