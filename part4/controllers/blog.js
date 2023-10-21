@@ -1,14 +1,9 @@
 const blogsRouter = require('express').Router()
 const Blog = require('./../models/blog')
 const User = require('./../models/user')
+const userExtractor = require('./../utils/middleware').userExtractor
 const jwt = require('jsonwebtoken')
 
-const getTokenFrom = request => {
-  const authorization = request.get('authorization')
-  if (authorization && authorization.startsWith('Bearer ')){
-    return authorization.replace('Bearer ', '')
-  }
-}
 
 blogsRouter.get('/', async (request, response) => {
   const blogs = await Blog.find({}).populate('user', {username: 1, name: 1})
@@ -24,18 +19,36 @@ blogsRouter.get('/:id', async (request, response) => {
   }
 })
 
-blogsRouter.delete('/:id', async (request, response) => {
+blogsRouter.delete('/:id', userExtractor, async (request, response) => {
+
+  const user = request.user
+
+  const blog = await Blog.findById(request.params.id).populate('user', {username: 1, name: 1})
+
+
+  if (!blog){
+    return resposne.status(404).json(
+      {
+        error: 'Blog not found'
+      }
+    )
+  }
+
+  if (blog.user.id.toString() !== user.id.toString()){
+    return response.status(403).json(
+      {
+        error: 'You are not authorized to delete this blog'
+      }
+    )
+  }
+
   await Blog.findByIdAndRemove(request.params.id)
   response.status(204).end()
 })
 
-blogsRouter.post('/', async (request, response) => {
+blogsRouter.post('/', userExtractor, async (request, response) => {
   const body = request.body
-  const decodedToken = jwt.verify(getTokenFrom(request), process.env.SECRET)
-  if (!decodedToken.id) {
-    return response.status(401).json({'error': 'token invalid'})
-  }
-  const user = await User.findById(decodedToken.id)
+  const user = request.user
 
   const blog = new Blog({
     title: body.title,
@@ -54,7 +67,6 @@ blogsRouter.post('/', async (request, response) => {
 
 blogsRouter.put('/:id', async (request, response) => {
   const {author, title, upvotes, url } = request.body
-  console.log(author, title, upvotes, url)
 
   const updatedPerson = await Blog.findByIdAndUpdate(
     request.params.id,

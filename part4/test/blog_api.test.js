@@ -7,16 +7,47 @@ const Blog = require('./../models/blog')
 const User = require('./../models/user')
 const helper = require('./test_helper')
 
+
+const newUsers = {
+    username: 'testuser',
+    name: 'testuser',
+    password: 'testpassword'
+}
+
+const registerUsers = async() => {
+    await api
+    .post('/api/users')
+    .send(newUsers);
+}
+
+const getToken =  async () => {
+    const response = await api
+        .post('/api/login')
+        .send(newUsers)
+
+    return response.body.token
+}
+
+
 beforeEach(async () => {
+    await User.deleteMany({})
+    await registerUsers();
+
     await Blog.deleteMany({})
 
-    const blogObjects = helper.initialBlogs
-        .map(blog => new Blog(blog))
-    
-    const promiseArray = blogObjects.map(blog => blog.save())
-    await Promise.all(promiseArray)
+
+    const token = await getToken()
+
+    await Promise.all(helper.initialBlogs.map(async (blog) => {
+        const response = await api
+            .post('/api/blogs')
+            .set('Authorization', `Bearer ${token}`)
+            .send(blog)
+    }))
 
 })
+
+
 
 describe('When there is initally some blogs saved',() => {
     test ('Blogs are returned as json', async() => {
@@ -42,13 +73,22 @@ describe('When specific blog is viewed', () => {
     test ('A specific blog can be viewed', async () => {
         const blogAtStart = await helper.blogsInDb()
         const blogToView = blogAtStart[0]
-    
+        
+        const expectedBlog = {
+            author: blogToView.author,
+            title: blogToView.title,
+            url: blogToView.url,
+            upvotes: blogToView.upvotes,
+            user: blogToView.user.toString(),
+            id: blogToView.id,
+        }
+
         const resultBlog = await api
             .get(`/api/blogs/${blogToView.id}`)
             .expect(200)
             .expect('Content-Type', /application\/json/)
     
-        expect(resultBlog.body).toEqual(blogToView)
+        expect(resultBlog.body).toEqual(expectedBlog)
     })
 
     test('fails with statuscode 404 if id does not exist', async () => {
@@ -62,6 +102,7 @@ describe('When specific blog is viewed', () => {
 
 describe('A new Blog is added', () => {
     test ('A valid blog can be added', async () => {
+        const token = await getToken();
         const newBlog =       
         {
             title: "Adding a new blog",
@@ -71,6 +112,7 @@ describe('A new Blog is added', () => {
         }
         await api
             .post('/api/blogs')
+            .set('Authorization', `Bearer ${token}`)
             .send(newBlog)
             .expect(201)
             .expect('Content-Type', /application\/json/)
@@ -84,13 +126,17 @@ describe('A new Blog is added', () => {
     })
     
     test('Upvotes property defaults to 0 if missing', async () => {
+        const token = await getToken();
         const newBlog = {
             title: 'New Blog Without Upvotes',
             author: 'Test Author',
             url: 'http://example.com',
         };
     
-        const response = await api.post('/api/blogs').send(newBlog);
+        const response = await api
+            .post('/api/blogs')
+            .set('Authorization', `Bearer ${token}`)
+            .send(newBlog);
     
         expect(response.status).toBe(201);
     
@@ -101,6 +147,7 @@ describe('A new Blog is added', () => {
 
 describe('When addition of invalid data is attempted', () => {
     test ('A blog without title cannot be added', async() => {
+        const token = await getToken();
         const newBlogTitle = 
             {
                 author: "Ranjit Nepal",
@@ -111,6 +158,7 @@ describe('When addition of invalid data is attempted', () => {
     
         await api
             .post('/api/blogs')
+            .set('Authorization', `Bearer ${token}`)
             .send(newBlogTitle)
             .expect(400)
         
@@ -120,6 +168,7 @@ describe('When addition of invalid data is attempted', () => {
     })
     
     test ('A blog without url cannot be added', async() => {    
+        const token = await getToken();
         const newBlogUrl = 
             {
                 author: "Ranjit Nepal",
@@ -129,6 +178,7 @@ describe('When addition of invalid data is attempted', () => {
             }
         await api
             .post('/api/blogs')
+            .set('Authorization', `Bearer ${token}`)
             .send(newBlogUrl)
             .expect(400)
         
@@ -157,11 +207,13 @@ describe('Updating of a blog', () => {
 
 describe('Deletion of a blog', () => {
     test ('A blog can be deleted', async() => {
+        const token = await getToken();
         const blogsToStart = await helper.blogsInDb()
         const blogToDelete = blogsToStart[0]
     
         await api
             .delete(`/api/blogs/${blogToDelete.id}`)
+            .set('Authorization', `Bearer ${token}`)
             .expect(204)
     
         const blogsAtEnd = await helper.blogsInDb()
@@ -229,9 +281,86 @@ describe('when there is initially one user in db', () => {
         const usersAtEnd = await helper.usersInDb()
         expect(usersAtEnd).toEqual(usersAtStart)
       })
-  })
+})
+
+  describe('Invalid User Creation', () => {
+    test('Creation of a user without a username should fail with a 400 Bad Request', async () => {
+        const newUser = {
+            name: 'John Doe',
+            password: 'password123',
+        };
+
+        const response = await api
+            .post('/api/users')
+            .send(newUser)
+            .expect(400);
+
+        expect(response.body.error).toContain('`username` is required');
+    });
+
+    test('Creation of a user with a short username should fail with a 400 Bad Request', async () => {
+        const newUser = {
+            username: 'us',
+            name: 'John Doe',
+            password: 'password123',
+        };
+
+        const response = await api
+            .post('/api/users')
+            .send(newUser)
+            .expect(400);
+
+        expect(response.body.error).toContain('is shorter than the minimum allowed length');
+    });
+
+    test('Creation of a user without a password should fail with a 400 Bad Request', async () => {
+        const newUser = {
+            username: 'johndoe',
+            name: 'John Doe',
+        };
+
+        const response = await api
+            .post('/api/users')
+            .send(newUser)
+            .expect(400);
+
+        expect(response.body.error).toContain('Password is required');
+    });
+
+    test('Creation of a user with a short password should fail with a 400 Bad Request', async () => {
+        const newUser = {
+            username: 'johndoe',
+            name: 'John Doe',
+            password: 'pw', // Short password
+        };
+
+        const response = await api
+            .post('/api/users')
+            .send(newUser)
+            .expect(400);
+
+        expect(response.body.error).toContain('Password must at least be 3 characters long');
+    });
+
+    test('Creation of a user with a non-unique username should fail with a 400 Bad Request', async () => {
+        const newUser = {
+            username: 'testuser', // An existing username
+            name: 'John Doe',
+            password: 'password123',
+        };
+
+        const response = await api
+            .post('/api/users')
+            .send(newUser)
+            .expect(400);
+
+        expect(response.body.error).toContain('expected `username` to be unique');
+    });
+});
+
 
 
 afterAll(async () => {
+
     await mongoose.connection.close()
 })
